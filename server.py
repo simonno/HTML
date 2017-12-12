@@ -28,13 +28,19 @@ def create_template_page(number_of_object):
     data = open('files/template.html', 'rb').read()
     if number_of_object == 0:
         return data
-    start = '<section id="feature" >\r\n'
-    end = '</section><!--/#feature-->\r\n'
-    regex = '%s(.*)%s' % (start, end)
-    value = re.split(regex, data)
-    # print header, '\r\n'
-    # print template, '\r\n'
-    # print footer, '\r\n'
+    start = '<section id="feature" >'
+    end = '</section><!--/#feature-->'
+    start_row = '<div class="row">'
+    end_row = '</div><!--/.row-->'
+    header, _, rest = data.partition(start)
+    result, _, footer = rest.partition(end)
+    part1, _, rest2 = result.partition(start_row)
+    template, _, part2 = rest2.partition(end_row)
+
+    template.replace('Title', 'CHECK1')
+    template.replace('link', 'check2')
+    template.replace('Content', 'CHECK3')
+    template.replace('img src=""', 'img src="files/images/man1.jpg"')
 
     return data
 
