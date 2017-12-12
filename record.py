@@ -4,10 +4,10 @@ import json
 # record class  - represent a record.
 class Record:
     def __init__(self, link, image, title, content):
-        self.link = link
-        self.image = image
-        self.title = title
-        self.content = content
+        self._link = link
+        self._image = image
+        self._title = title
+        self._content = content
 
     def to_json(self):
         return json.dumps(self, default=lambda o: o.__dict__)

@@ -1,7 +1,9 @@
 import socket
 from os.path import splitext
 
-from HTMLParser import HttpMassageParser
+import re
+
+from HttpParser import HttpMassageParser
 
 
 def get_content_type(file_path):
@@ -22,14 +24,45 @@ def get_content_type(file_path):
     }.get(file_extension, 'text/html')
 
 
+def create_template_page(number_of_object):
+    data = open('files/template.html', 'rb').read()
+    if number_of_object == 0:
+        return data
+    start = '<section id="feature" >\r\n'
+    end = '</section><!--/#feature-->\r\n'
+    regex = '%s(.*)%s' % (start, end)
+    value = re.split(regex, data)
+    # print header, '\r\n'
+    # print template, '\r\n'
+    # print footer, '\r\n'
+
+    return data
+
+
+def dynamic_request(data_path):
+    number_of_object = 0
+    if '?' in data_path:
+        number_of_object = data_path.split('?')[1].split('=')[1]
+    return create_template_page(number_of_object)
+
+
 def parser(massageHTML):
     lines = massageHTML.splitlines()
     data_path = lines[0].split("GET /")[1].split(" HTTP/1.1")[0]
+
+    if data_path.startswith('homepage'):
+        data = dynamic_request(data_path)
+        massage_parser = HttpMassageParser(1.1, 200, 'text/html', 'close', data)
+        return massage_parser.get_massage()
+
     try:
         data = open(data_path, 'rb').read()
     except IOError:
-        massage_parser = HttpMassageParser(1.1, 404, 'text/html', 'close', '')
-        return massage_parser.get_massage()
+        try:
+            data = open("files/" + data_path, 'rb').read()
+        except IOError:
+            massage_parser = HttpMassageParser(1.1, 404, 'text/html', 'close', '')
+            return massage_parser.get_massage()
 
     massage_parser = HttpMassageParser(1.1, 200, get_content_type(data_path), 'close', data)
     return massage_parser.get_massage()
@@ -46,7 +79,7 @@ while True:
     print 'Connection from: ', client_address
     massage = client_socket.recv(1024)
     while not massage == '':
-        print 'Received: ', massage
+        # print 'Received: ', massage
         to_send = parser(massage)
         client_socket.send(to_send)
         massage = client_socket.recv(1024)
