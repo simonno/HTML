@@ -23,65 +23,6 @@ def get_content_type(file_path):
     }.get(file_extension, 'text/html')
 
 
-def create_template_page(number_of_object):
-    data = open('files/template.html', 'rb').read()
-    if number_of_object == 0:
-        return data
-
-    if number_of_object > len(resources_table):
-        number_of_object = len(resources_table)
-
-    start = '<section id="feature" >'
-    end = '</section><!--/#feature-->'
-    start_row = '<div class="row">'
-    end_row = '</div><!--/.row-->'
-    header, _, rest = data.partition(start)
-    result, _, footer = rest.partition(end)
-    part1, _, rest2 = result.partition(start_row)
-    template, _, part2 = rest2.partition(end_row)
-
-    dynamic = ''
-    for i in range(0, number_of_object):
-        resource = resources_table[i]
-        dynamic += template.replace('Title', resource.title).replace('link', resource.link) \
-            .replace('Content', resource.content) \
-            .replace('img src=""', 'img src="' + resource.image + '"')
-
-    new_template = header + start + part1 + start_row + dynamic + end_row + part2 + end + footer
-    return new_template
-
-
-def dynamic_request(data_path):
-    number_of_object = 0
-    if '?' in data_path:
-        number_of_object = data_path.split('?')[1].split('=')[1]
-    return create_template_page(number_of_object)
-
-
-def parser(massageHTML):
-    lines = massageHTML.splitlines()
-    data_path = lines[0].split("GET /")[1].split(" HTTP/1.1")[0]
-
-    if data_path.startswith('homepage'):
-        data = dynamic_request(data_path)
-        massage_parser = HttpMassageParser(1.1, 200, 'text/html', 'close', data)
-        return massage_parser.get_massage()
-
-    try:
-        file_resource = open(data_path, 'rb')
-    except IOError:
-        try:
-            file_resource = open("files/" + data_path, 'rb')
-        except IOError:
-            massage_parser = HttpMassageParser(1.1, 404, 'text/html', 'close', '')
-            return massage_parser.get_massage()
-
-    data = file_resource.read()
-    file_resource.close()
-    massage_parser = HttpMassageParser(1.1, 200, get_content_type(data_path), 'close', data)
-    return massage_parser.get_massage()
-
-
 def create_resources_table():
     resources_list = [Resource('http://www.ynet.co.il/articles/0,7340,L-4713571,00.html',
                                'https://images1.ynet.co.il/PicServer4/2014/08/05/5506384/52203970100690640360no.jpg',
@@ -127,6 +68,65 @@ def create_resources_table():
                                'הציג מקרון צעדים חדשים למלחמה בתופעה. "זאת בושה לצרפת,"' +
                                ' אמר הנשיא שאחת מהבטחות הבחירות שלו הייתה להשיג שוויון מגדרי.')]
     return resources_list
+
+
+def create_template_page(number_of_object):
+    data = open('files/template.html', 'rb').read()
+    if number_of_object == 0:
+        return data
+
+    if number_of_object > len(resources_table):
+        number_of_object = len(resources_table)
+
+    start = '<section id="feature" >'
+    end = '</section><!--/#feature-->'
+    start_row = '<div class="row">'
+    end_row = '</div><!--/.row-->'
+    header, _, rest = data.partition(start)
+    result, _, footer = rest.partition(end)
+    part1, _, rest2 = result.partition(start_row)
+    template, _, part2 = rest2.partition(end_row)
+
+    dynamic = ''
+    for i in range(0, number_of_object):
+        resource = resources_table[i]
+        dynamic += template.replace('Title', resource.title).replace('link', resource.link) \
+            .replace('Content', resource.content) \
+            .replace('img src=""', 'img src="' + resource.image + '"')
+
+    new_template = header + start + part1 + start_row + dynamic + end_row + part2 + end + footer
+    return new_template
+
+
+def dynamic_request(data_path):
+    number_of_object = 0
+    if '?' in data_path:
+        number_of_object = int(data_path.split('?')[1].split('=')[1])
+    return create_template_page(number_of_object)
+
+
+def parser(massageHTML):
+    lines = massageHTML.splitlines()
+    data_path = lines[0].split("GET /")[1].split(" HTTP/1.1")[0]
+
+    if data_path.startswith('homepage'):
+        data = dynamic_request(data_path)
+        massage_parser = HttpMassageParser(1.1, 200, 'text/html', 'close', data)
+        return massage_parser.get_massage()
+
+    try:
+        file_resource = open(data_path, 'rb')
+    except IOError:
+        try:
+            file_resource = open("files/" + data_path, 'rb')
+        except IOError:
+            massage_parser = HttpMassageParser(1.1, 404, 'text/html', 'close', '')
+            return massage_parser.get_massage()
+
+    data = file_resource.read()
+    file_resource.close()
+    massage_parser = HttpMassageParser(1.1, 200, get_content_type(data_path), 'close', data)
+    return massage_parser.get_massage()
 
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
