@@ -1,7 +1,6 @@
 # coding=utf-8
 import socket
 from os.path import splitext
-
 from HttpParser import HttpMassageParser
 from resource import Resource
 
