@@ -1,6 +1,7 @@
 # coding=utf-8
 import socket
 from os.path import splitext
+
 from HttpParser import HttpMassageParser
 from resource import Resource
 
@@ -29,8 +30,7 @@ def create_resources_table():
                                'החוש הדומיננטי שיעזור לכם בלימודים',
                                'החוש הדומיננטי שיעזור לכם בלימודים. אילו טיפים של שימושבחושים יעזרו לכם?'),
                       Resource('http://www.ynet.co.il/articles/0,7340,L-5045541,00.html',
-                               'https://images1.ynet.co.il/Pic Server5/2017/11/23/8172884' +
-                               '/817287001000100980704no.jpg',
+                               'https://images1.ynet.co.il/PicServer5/2017/11/23/8172884/817287001000100980704no.jpg',
                                '"כ"ט בנובמבר: "שמחה שנמשכה ימים ולילות, הייתה אופוריה"',
                                'ב1947- הם היו ילדים או צעירים בתחילת דרכם,' +
                                ' אבל את היום הגורלי ב29- בנובמבר הם לא שוכחים עד היום.' +
@@ -105,9 +105,30 @@ def dynamic_request(data_path):
     return create_template_page(number_of_object)
 
 
-def parser(massageHTML):
-    lines = massageHTML.splitlines()
+def parser(massageHttp):
+    last_modified = ''
+    data_path = ''
+    lines = massageHttp.splitlines()
+    for line in lines:
+        if line.startswith('GET /'):
+            data_path = line.split('GET /')[1].split(' HTTP/1.1')[0]
+        elif line.startswith('If Modified Since:'):
+            last_modified = line.split('If Modified Since:')[1]
+
+    return {'data_path': data_path, 'last_modified': last_modified}
+
+
+def get_response(massageHttp):
+    if 'If-Modified-Since' in massageHttp:
+        massage_parser = HttpMassageParser(1.1, 304, 'text/html', 'close', '')
+        return massage_parser.get_massage()
+
+    lines = massageHttp.splitlines()
     data_path = lines[0].split("GET /")[1].split(" HTTP/1.1")[0]
+
+    # args = parser(massageHttp)
+    # data_path = args['data_path']
+    # last_modified_since = args['last_modified']
 
     if data_path.startswith('homepage'):
         data = dynamic_request(data_path)
@@ -116,9 +137,12 @@ def parser(massageHTML):
 
     try:
         file_resource = open(data_path, 'rb')
+        # last_modified = time.ctime(os.path.getmtime(data_path))
     except IOError:
         try:
-            file_resource = open("files/" + data_path, 'rb')
+            file_resource = open('files/' + data_path, 'rb')
+            # last_modified = time.ctime(os.path.getmtime('files/' + data_path))
+
         except IOError:
             massage_parser = HttpMassageParser(1.1, 404, 'text/html', 'close', '')
             return massage_parser.get_massage()
@@ -141,10 +165,12 @@ while True:
     print 'Connection from: ', client_address
     massage = client_socket.recv(1024)
     while not massage == '':
-        print 'Received: '
-        print massage,
-        to_send = parser(massage)
+        # print 'Received: '
+        # print massage,
+        to_send = get_response(massage)
         client_socket.send(to_send)
+        # print 'Sent: '
+        # print to_send,
         massage = client_socket.recv(1024)
 
     print 'Client disconnected'
