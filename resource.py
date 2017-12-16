@@ -1,7 +1,7 @@
 import json
 
 
-# record class  - represent a record.
+# Resource class  - represent a Resource.
 class Resource:
     def __init__(self, link, image, title, content):
         self.link = link

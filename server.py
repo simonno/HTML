@@ -5,6 +5,7 @@ from HttpParser import HttpMassageParser
 from resource import Resource
 
 
+# return the content type of the response according to the file_extension.
 def get_content_type(file_path):
     file_name, file_extension = splitext(file_path)
     return {
@@ -23,6 +24,7 @@ def get_content_type(file_path):
     }.get(file_extension, 'text/html')
 
 
+# create the resources table of the articles.
 def create_resources_table():
     resources_list = [Resource('http://www.ynet.co.il/articles/0,7340,L-4713571,00.html',
                                'https://images1.ynet.co.il/PicServer4/2014/08/05/5506384/52203970100690640360no.jpg',
@@ -69,13 +71,14 @@ def create_resources_table():
     return resources_list
 
 
-def create_template_page(number_of_object):
+# create the template page according to the number of articles.
+def create_template_page(number_of_articles):
     data = open('files/template.html', 'rb').read()
-    if number_of_object == 0:
+    if number_of_articles == 0:
         return data
 
-    if number_of_object > len(resources_table):
-        number_of_object = len(resources_table)
+    if number_of_articles > len(resources_table):
+        number_of_articles = len(resources_table)
 
     start = '<section id="feature" >'
     end = '</section><!--/#feature-->'
@@ -87,7 +90,7 @@ def create_template_page(number_of_object):
     template, _, part2 = rest2.partition(end_row)
 
     dynamic = ''
-    for i in range(0, number_of_object):
+    for i in range(0, number_of_articles):
         resource = resources_table[i]
         dynamic += template.replace('Title', resource.title).replace('link', resource.link) \
             .replace('Content', resource.content) \
@@ -97,61 +100,61 @@ def create_template_page(number_of_object):
     return new_template
 
 
+# create the response of the dynamic request
 def dynamic_request(data_path):
-    number_of_object = 0
+    number_of_articles = 0
     if '?' in data_path:
-        number_of_object = int(data_path.split('?')[1].split('=')[1])
-    return create_template_page(number_of_object)
+        number_of_articles = int(data_path.split('?')[1].split('=')[1])
+    return create_template_page(number_of_articles)
 
 
-def parser(massageHttp):
-    last_modified = ''
-    data_path = ''
-    lines = massageHttp.splitlines()
-    for line in lines:
-        if line.startswith('GET /'):
-            data_path = line.split('GET /')[1].split(' HTTP/1.1')[0]
-        elif line.startswith('If Modified Since:'):
-            last_modified = line.split('If Modified Since:')[1]
+#
+# def parser(massageHttp):
+#     last_modified = ''
+#     data_path = ''
+#     lines = massageHttp.splitlines()
+#     for line in lines:
+#         if line.startswith('GET /'):
+#             data_path = line.split('GET /')[1].split(' HTTP/1.1')[0]
+#         elif line.startswith('If Modified Since:'):
+#             last_modified = line.split('If Modified Since:')[1]
+#
+#     return {'data_path': data_path, 'last_modified': last_modified}
 
-    return {'data_path': data_path, 'last_modified': last_modified}
 
-
+# create the a http response according to the request.
 def get_response(massageHttp):
-    if 'If-Modified-Since' in massageHttp:
+    if 'If-Modified-Since' in massageHttp:  # case the resource is on the client cache.
         massage_parser = HttpMassageParser(1.1, 304, 'text/html', 'close', '')
         return massage_parser.get_massage()
 
     lines = massageHttp.splitlines()
     data_path = lines[0].split("GET /")[1].split(" HTTP/1.1")[0]
 
-    # args = parser(massageHttp)
-    # data_path = args['data_path']
-    # last_modified_since = args['last_modified']
-
-    if data_path.startswith('homepage'):
+    if data_path.startswith('homepage'):  # dynamic request
         data = dynamic_request(data_path)
         massage_parser = HttpMassageParser(1.1, 200, 'text/html', 'close', data)
         return massage_parser.get_massage()
 
+    # static request
     try:
         file_resource = open(data_path, 'rb')
-        # last_modified = time.ctime(os.path.getmtime(data_path))
     except IOError:
         try:
             file_resource = open('files/' + data_path, 'rb')
-            # last_modified = time.ctime(os.path.getmtime('files/' + data_path))
 
-        except IOError:
+        except IOError:  # error - not found
             massage_parser = HttpMassageParser(1.1, 404, 'text/html', 'close', '')
             return massage_parser.get_massage()
 
+    # found - create a 200 massage.
     data = file_resource.read()
     file_resource.close()
     massage_parser = HttpMassageParser(1.1, 200, get_content_type(data_path), 'close', data)
     return massage_parser.get_massage()
 
 
+# initial server's tcp socket
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_ip = '127.0.0.1'
 server_port = 80
@@ -159,6 +162,7 @@ server.bind((server_ip, server_port))
 server.listen(5)
 resources_table = create_resources_table()
 
+# get the clients requests.
 while True:
     client_socket, client_address = server.accept()
     print 'Connection from: ', client_address
