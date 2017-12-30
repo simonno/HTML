@@ -89,6 +89,7 @@ def create_template_page(number_of_articles):
     part1, _, rest2 = result.partition(start_row)
     template, _, part2 = rest2.partition(end_row)
 
+    template = start_row + template + end_row
     dynamic = ''
     for i in range(0, number_of_articles):
         resource = resources_table[i]
@@ -96,30 +97,16 @@ def create_template_page(number_of_articles):
             .replace('Content', resource.content) \
             .replace('img src=""', 'img src="' + resource.image + '"')
 
-    new_template = header + start + part1 + start_row + dynamic + end_row + part2 + end + footer
+    new_template = header + start + part1 + dynamic + part2 + end + footer
     return new_template
 
 
 # create the response of the dynamic request
-def dynamic_request(data_path):
+def dynamic_request(args):
     number_of_articles = 0
-    if '?' in data_path:
-        number_of_articles = int(data_path.split('?')[1].split('=')[1])
+    if args != '':
+        number_of_articles = int(args.split('=')[1])
     return create_template_page(number_of_articles)
-
-
-#
-# def parser(massageHttp):
-#     last_modified = ''
-#     data_path = ''
-#     lines = massageHttp.splitlines()
-#     for line in lines:
-#         if line.startswith('GET /'):
-#             data_path = line.split('GET /')[1].split(' HTTP/1.1')[0]
-#         elif line.startswith('If Modified Since:'):
-#             last_modified = line.split('If Modified Since:')[1]
-#
-#     return {'data_path': data_path, 'last_modified': last_modified}
 
 
 # create the a http response according to the request.
@@ -129,10 +116,15 @@ def get_response(massageHttp):
         return massage_parser.get_massage()
 
     lines = massageHttp.splitlines()
-    data_path = lines[0].split("GET /")[1].split(" HTTP/1.1")[0]
+    request = lines[0].split("GET /")[1].split(" HTTP/1.1")[0]
+    if '?' in request:
+        data_path, args = request.split('?')
+    else:
+        data_path = request
+        args = ''
 
     if data_path.startswith('homepage'):  # dynamic request
-        data = dynamic_request(data_path)
+        data = dynamic_request(args)
         massage_parser = HttpMassageParser(1.1, 200, 'text/html', 'close', data)
         return massage_parser.get_massage()
 
